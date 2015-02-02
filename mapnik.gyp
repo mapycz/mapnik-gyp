@@ -31,6 +31,7 @@
       "<@(includes)/gdal",
       "<@(includes)/freetype2",
       "<@(includes)/libxml2",
+      "<@(includes)/libxslt",
       "<@(includes)/cairo"
     ],
     "boost_version":"1_57",
@@ -193,6 +194,7 @@
               "proj.lib",
               "libtiff_i.lib",
               "libxml2_a.lib",
+              "libxslt_a.lib",
               "ws2_32.lib",
               "libjpeg.lib",
               "freetype.lib",
@@ -214,6 +216,7 @@
               "-ltiff",
               "-lwebp",
               "-lxml2",
+              "-lxslt",
               "-licui18n",
               "-ljpeg",
               "-licuuc",

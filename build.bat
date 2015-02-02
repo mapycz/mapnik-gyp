@@ -92,6 +92,9 @@ xcopy /i /d /s /q %DEPSDIR%\freetype\include %MAPNIK_SDK%\includes\freetype2 /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /i /d /s /q %DEPSDIR%\libxml2\include %MAPNIK_SDK%\includes\libxml2 /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+mkdir %MAPNIK_SDK%\includes\libxslt
+xcopy /i /d /s /q %DEPSDIR%\libxslt\libxslt\*.h %MAPNIK_SDK%\includes\libxslt /Y
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\zlib\zlib.h %MAPNIK_SDK%\includes\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\zlib\zconf.h %MAPNIK_SDK%\includes\ /Y
@@ -168,6 +171,18 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\icu\bin%ICU_PATH_POSTFIX%\icudt%ICU_VERSION%.dll %MAPNIK_SDK%\libs\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
+xcopy /q /d %DEPSDIR%\libxslt\win32\bin.msvc\libxslt.lib %MAPNIK_SDK%\libs\ /Y
+IF %ERRORLEVEL% NEQ 0 GOTO ERRO
+xcopy /q /d %DEPSDIR%\libxslt\win32\bin.msvc\libxslt_a.lib %MAPNIK_SDK%\libs\ /Y
+IF %ERRORLEVEL% NEQ 0 GOTO ERRO
+xcopy /q /d %DEPSDIR%\libxslt\win32\bin.msvc\libexslt.lib %MAPNIK_SDK%\libs\ /Y
+IF %ERRORLEVEL% NEQ 0 GOTO ERRO
+xcopy /q /d %DEPSDIR%\libxslt\win32\bin.msvc\libexslt_a.lib %MAPNIK_SDK%\libs\ /Y
+IF %ERRORLEVEL% NEQ 0 GOTO ERRO
+xcopy /q /d %DEPSDIR%\libxslt\win32\bin.msvc\libexslt.dll %MAPNIK_SDK%\libs\ /Y
+IF %ERRORLEVEL% NEQ 0 GOTO ERRO
+xcopy /q /d %DEPSDIR%\libxslt\win32\bin.msvc\libxslt.dll %MAPNIK_SDK%\libs\ /Y
+IF %ERRORLEVEL% NEQ 0 GOTO ERRO
 
 xcopy /q /d %DEPSDIR%\libxml2\win32\bin.msvc\libxml2_a.lib %MAPNIK_SDK%\libs\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
