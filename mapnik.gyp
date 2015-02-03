@@ -15,6 +15,7 @@
       "HAVE_PNG",
       "HAVE_TIFF",
       "HAVE_WEBP",
+      "HAVE_LIBXML2",
       "MAPNIK_THREADSAFE",
       "HAVE_CAIRO",
       "GRID_RENDERER",
