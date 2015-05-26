@@ -4,33 +4,9 @@ set -eo pipefail
 
 export ROOTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-BASE_PATH="$(pwd)/mapnik-sdk"
+source ../bootstrap.sh
 
-if [[ $(uname -s) == 'Darwin' ]]; then
-    SLUG="mapnik-macosx-sdk-v3.0.0-rc1-234-g1325075-lto"
-else
-    SLUG="mapnik-linux-sdk-v3.0.0-rc1-234-g1325075"
-fi
-
-# mapnik sdk
-LOCAL_SDK="$HOME/projects/mapnik-package-lto/osx/out/dist/${SLUG}"
-
-echo "looking for ${LOCAL_SDK}"
-if [[ -d ${LOCAL_SDK} ]]; then
-    echo "found ${LOCAL_SDK}"
-    rm -f ./mapnik-sdk
-    ln -s ${LOCAL_SDK} ${BASE_PATH}
-elif [[ ! -d ${BASE_PATH} ]]; then
-    if [[ ! -f ${SLUG}.tar.bz2 ]]; then
-        echo "downloading https://mapnik.s3.amazonaws.com/dist/dev/${SLUG}.tar.bz2"
-        wget https://mapnik.s3.amazonaws.com/dist/dev/${SLUG}.tar.bz2
-    fi
-    if [[ ! -f ${SLUG} ]]; then
-        echo  "untarring ${SLUG}.tar.bz2"
-        tar xf ${SLUG}.tar.bz2
-    fi
-    ln -s ./${SLUG} ${BASE_PATH}
-fi
+BASE_PATH="$(cd $(pwd)/../mason_packages/.link && pwd)"
 
 # gyp
 if [[ ! -d gyp ]]; then
@@ -51,9 +27,11 @@ fi
 rm -rf ./unix-build
 rm -rf ./${CONFIGURATION}
 
-if [[ $COVERITY == true ]];then
-  #export CC=/usr/bin/clang
-  #export CXX=/usr/bin/clang++
+COVERITY_VERSION="7.6.0"
+
+if [[ ${COVERITY} == 1 ]];then
+  export CC=/usr/bin/clang
+  export CXX=/usr/bin/clang++
   ./gyp/gyp ./mapnik.gyp \
     --depth=. \
     -f make \
@@ -62,27 +40,41 @@ if [[ $COVERITY == true ]];then
     -Dconfiguration=${CONFIGURATION} \
     -Dlibs=${BASE_PATH}/lib
 
-  export PATH=${HOME}/cov-analysis-macosx-7.5.0/bin/:$PATH
+  export PATH=${HOME}/cov-analysis-macosx-${COVERITY_VERSION}/bin/:$PATH
 
   RESULTS_DIR="$(pwd)/cov-int"
   mkdir -p $RESULTS_DIR
   rm -rf $RESULTS_DIR/*
   # https://scan.coverity.com/download
   # https://scan.coverity.com/projects/3237/builds/new
-  rm -f ${HOME}/cov-analysis-macosx-7.5.0/config/templates/.DS_Store
-  cov-configure --template --compiler clang
-  # --comptype clangcxx
-  cov-build -dir $RESULTS_DIR make -C ./unix-build/ mapnik -j1 V=1
+  rm -f ${HOME}/cov-analysis-macosx-${COVERITY_VERSION}/config/templates/.DS_Store
+  cov-configure --template --compiler clangcc --comptype clangcxxcc
+  cov-build -dir $RESULTS_DIR make -C ./unix-build/ mapnik -j4 V=1
   rm -f mapnik-coverity.tgz
   DESCRIBE=$(git --git-dir=../.git describe)
   # NOTE: cov-int must be relative name not absolute
   tar czf mapnik-coverity.tgz cov-int
-  curl --form token=${COVERITY_TOKEN} \
+  curl --form token=${COVERITY_TOKEN_MAPNIK} \
     --form email=dane@mapbox.com \
     --form file=@mapnik-coverity.tgz \
     --form version="${DESCRIBE}" \
     --form description="Mapnik 3.x alpha build" \
     https://scan.coverity.com/builds?project=mapnik%2Fmapnik
+elif [[ ${SCAN} == 1 ]]; then
+    #rm -rf ./scan-static-build
+    scan-build \
+     --use-analyzer=/opt/llvm/bin/clang++ \
+     ./gyp/gyp ./mapnik.gyp \
+    --depth=. \
+    -f make \
+    --generator-output=./scan-static-build \
+    -Dincludes=${BASE_PATH}/include \
+    -Dconfiguration=Debug \
+    -Dlibs=${BASE_PATH}/lib
+
+    scan-build \
+     --use-analyzer=/opt/llvm/bin/clang++ \
+     make -C ./scan-static-build/ mapnik -j4
 else
   if [[ ! -d ninja ]]; then
       git clone --depth=1 git://github.com/martine/ninja.git

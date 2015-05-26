@@ -37,9 +37,6 @@
     ],
     "boost_version":"1_57",
     "boost_toolset":"vc140",
-    "python_version": '<!(python -c "import sys;print(\'%s.%s\' % (sys.version_info.major,sys.version_info.minor))")',
-    "python_version2": '<!(python -c "import sys;print(\'%s%s\' % (sys.version_info.major,sys.version_info.minor))")',
-    "python_root": '<!(python -c "import sys,ntpath,posixpath;print(sys.prefix).replace(ntpath.sep,posixpath.sep)")', # note: single quotes needed for windows
     "conditions": [
       ["OS=='win'",
         {
@@ -51,7 +48,6 @@
                   "boost_system_lib":"libboost_system-<(boost_toolset)-mt-gd-<(boost_version).lib",
                   "boost_thread_lib":"libboost_thread-<(boost_toolset)-mt-gd-<(boost_version).lib",
                   "boost_program_options_lib":"libboost_program_options-<(boost_toolset)-mt-gd-<(boost_version).lib",
-                  "boost_python_lib":"boost_python-<(boost_toolset)-mt-gd-<(boost_version).lib",
                   "webp_lib":"libwebp_debug_dll.lib",
                   "icuuc_lib":"icuucd.lib",
                   "icuin_lib":"icuind.lib",
@@ -63,7 +59,6 @@
                   "boost_system_lib":"libboost_system-<(boost_toolset)-mt-<(boost_version).lib",
                   "boost_thread_lib":"libboost_thread-<(boost_toolset)-mt-<(boost_version).lib",
                   "boost_program_options_lib":"libboost_program_options-<(boost_toolset)-mt-<(boost_version).lib",
-                  "boost_python_lib":"boost_python-<(boost_toolset)-mt-<(boost_version).lib",
                   "webp_lib":"libwebp_dll.lib",
                   "icuuc_lib":"icuuc.lib",
                   "icuin_lib":"icuin.lib",
@@ -77,10 +72,7 @@
             'BOOST_MSVC_ENABLE_2014_JUN_CTP',
             "_WINDOWS"
           ],
-          "common_libraries": [],
-          "python_includes":"<(python_root)/include",
-          "python_libs":"<(python_root)/libs",
-          "python_module_extension": "pyd"
+          "common_libraries": []
         },
         {
           "common_defines": [
@@ -90,10 +82,7 @@
           ],
           "common_libraries": [
             "-L<@(libs)"
-          ],
-          "python_includes":"/usr/include/python<(python_version)",
-          "python_libs":"<(python_root)/lib",
-          "python_module_extension": "so"
+          ]
         }
       ],
       ["OS=='mac'",
@@ -252,69 +241,6 @@
       }
     },
     {
-      "target_name": "_mapnik",
-      "product_prefix":"",
-      "product_dir":"lib/python<(python_version)/mapnik/",
-      "type": "loadable_module",
-      "product_extension": "<(python_module_extension)",
-      "sources": [ "<!@(find ../bindings/python/ -name '*.cpp')" ],
-      "dependencies": [ "mapnik", "mapnik-wkt", "mapnik-json" ],
-      "copies": [
-        {
-          "files": [ "../bindings/python/mapnik/__init__.py" ],
-          "destination": "<(PRODUCT_DIR)/lib/python<(python_version)/mapnik/"
-        },
-        {
-          "files": [ "../bindings/python/mapnik/printing.py" ],
-          "destination": "<(PRODUCT_DIR)/lib/python<(python_version)/mapnik/"
-        }
-      ],
-      "include_dirs": [
-        "<@(python_includes)"
-      ],
-      "msvs_settings": {
-        "VCLinkerTool": {
-          "AdditionalLibraryDirectories": [
-            "<@(python_libs)"
-          ]
-        }
-      },
-      "xcode_settings": {
-        "WARNING_CFLAGS": [
-          "-Wno-missing-field-initializers"
-        ],
-        "DYLIB_INSTALL_NAME_BASE": "@rpath"
-      },
-      "conditions": [
-        ["OS=='win'",
-          {
-            "libraries":[
-              "<(boost_thread_lib)",
-              "<(boost_system_lib)",
-              "<(boost_regex_lib)",
-              "<(icuuc_lib)",
-              "<(icuin_lib)",
-              "<(boost_python_lib)",
-              "python<(python_version2).lib"
-            ],
-            "defines":["HAVE_ROUND","HAVE_HYPOT"]
-          },
-          {
-            "libraries":[
-                "-lboost_python-<(python_version)",
-                "-lboost_thread",
-                "-lboost_system",
-            ]
-          }
-        ],
-        [ "OS=='mac'",
-          {
-            "libraries": [ "-undefined dynamic_lookup" ],
-          }
-        ]
-      ]
-    },
-    {
       "target_name": "nik2img",
       "type": "executable",
       "product_dir":"bin",
@@ -467,7 +393,13 @@
           } ,
           {
             "libraries": [
-              "-lgdal"
+              "-lgdal",
+              "-lproj",
+              "-liconv",
+              "-lexpat",
+              "-lz",
+              "-ljpeg",
+              "-ltiff"
             ]
           }
         ]
@@ -494,56 +426,18 @@
           } ,
           {
             "libraries": [
-              "-lgdal"
+              "-lgdal",
+              "-lproj",
+              "-liconv",
+              "-lexpat",
+              "-lz",
+              "-ljpeg",
+              "-ltiff"
             ]
           }
         ]
       ]
     },
-    # {
-    #   "target_name": "python",
-    #   "product_prefix":"",
-    #   "type": "loadable_module",
-    #   "product_dir": "lib/mapnik/input",
-    #   "product_extension": "input",
-    #   "sources": [ "<!@(find ../plugins/input/python/ -name '*.cpp')" ],
-    #   "dependencies": [ "mapnik" ],
-    #   "include_dirs": [
-    #     "<@(python_includes)"
-    #   ],
-    #   "msvs_settings": {
-    #     "VCLinkerTool": {
-    #       "AdditionalLibraryDirectories": [
-    #         "<@(python_libs)"
-    #       ]
-    #     }
-    #   },
-    #   "conditions": [
-    #     ["OS=='win'",
-    #       {
-    #         "libraries":[
-    #           "<(boost_thread_lib)",
-    #           "<(boost_system_lib)",
-    #           "<(boost_regex_lib)",
-    #           "<(icuuc_lib)",
-    #           "<(icuin_lib)",
-    #           "<(boost_python_lib)",
-    #           "python<(python_version2).lib"
-    #         ],
-    #         "defines":["HAVE_ROUND","HAVE_HYPOT"]
-    #       },
-    #       {
-    #         "libraries":[
-    #             "-lboost_python-<(python_version)",
-    #             "-lboost_thread",
-    #             "-lboost_system",
-    #             "-L<@(python_libs)",
-    #             "-lpython<(python_version)"
-    #         ]
-    #       }
-    #     ]
-    #   ]
-    # },
     {
       "target_name": "postgis",
       "product_prefix":"",
@@ -629,104 +523,30 @@
       ]
     },
     {
-      "target_name": "agg_blend_src_over_test",
+      "target_name": "test",
       "type": "executable",
       "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/agg_blend_src_over_test.cpp"],
-      "dependencies": [ "mapnik" ]
-    },
-    {
-      "target_name": "clipping_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/clipping_test.cpp"],
-      "dependencies": [ "mapnik" ],
+      "sources": [ 
+        "<!@(find ../test/unit/ -name '*.cpp')"
+      ],
+      "include_dirs":[
+        "../test"
+      ],
+      "dependencies": [ "mapnik", "mapnik-json", "mapnik-wkt" ],
       "conditions": [
         ["OS=='win'",
           {
             "libraries":[
               "<(boost_filesystem_lib)",
-              "<(boost_system_lib)"
-            ],
-          } ,
-          {
-            "libraries": [ "-lboost_system","-lboost_filesystem"]
-          }
-        ]
-      ]
-    },
-    {
-      "target_name": "conversions_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/conversions_test.cpp"],
-      "dependencies": [ "mapnik" ],
-      "conditions": [
-        ["OS=='win'",
-          {
-            "libraries":[
-              "<(icuuc_lib)"
-            ],
-          } ,
-          {
-            "libraries": [ "-lboost_system","-lboost_filesystem"]
-          }
-        ]
-      ]
-    },
-    {
-      "target_name": "exceptions_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/exceptions_test.cpp"],
-      "dependencies": [ "mapnik" ],
-      "conditions": [
-        ["OS=='win'",
-          {
-            "libraries":[
-              "<(boost_filesystem_lib)",
-              "<(boost_system_lib)"
-            ],
-          } ,
-          {
-            "libraries": [ "-lboost_system","-lboost_filesystem"]
-          }
-        ]
-      ]
-    },
-    {
-      "target_name": "font_registration_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/font_registration_test.cpp"],
-      "dependencies": [ "mapnik" ],
-      "conditions": [
-        ["OS=='win'",
-          {
-            "libraries":[
-              "<(boost_filesystem_lib)",
-              "<(boost_system_lib)"
-            ],
-          } ,
-          {
-            "libraries": [ "-lboost_system","-lboost_filesystem"]
-          }
-        ]
-      ]
-    },
-    {
-      "target_name": "fontset_runtime_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/fontset_runtime_test.cpp"],
-      "dependencies": [ "mapnik" ],
-      "conditions": [
-        ["OS=='win'",
-          {
-            "libraries":[
+              "<(boost_system_lib)",
+              "cairo.lib",
+              "libtiff_i.lib",
               "<(icuuc_lib)",
-              "<(boost_filesystem_lib)",
-              "<(boost_system_lib)"
+              "<(icuin_lib)",
+              "proj.lib",
+              "libxml2_a.lib",
+              "<(webp_lib)",
+              "ws2_32.lib"
             ],
           } ,
           {
@@ -734,108 +554,6 @@
           }
         ]
       ]
-    },
-    {
-      "target_name": "geometry_converters_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/geometry_converters_test.cpp"],
-      "dependencies": [ "mapnik", "mapnik-wkt" ],
-      "conditions": [
-        ["OS=='win'",
-          {
-            "libraries":[
-              "<(boost_filesystem_lib)",
-              "<(boost_system_lib)"
-            ],
-          } ,
-          {
-            "libraries": [ "-lboost_system","-lboost_filesystem"]
-          }
-        ]
-      ]
-    },
-    {
-      "target_name": "simplify_converters_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/simplify_converters_test.cpp"],
-      "dependencies": [ "mapnik", "mapnik-wkt" ],
-      "conditions": [
-        ["OS=='win'",
-          {
-            "libraries":[
-              "<(boost_filesystem_lib)",
-              "<(boost_system_lib)"
-            ],
-          } ,
-          {
-            "libraries": [ "-lboost_system","-lboost_filesystem"]
-          }
-        ]
-      ]
-    },
-    {
-      "target_name": "image_io_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/image_io_test.cpp"],
-      "dependencies": [ "mapnik" ],
-      "conditions": [
-        ["OS=='win'",
-          {
-            "libraries":[
-              "<(boost_filesystem_lib)",
-              "<(boost_system_lib)",
-              "cairo.lib"
-            ],
-          } ,
-          {
-            "libraries": [ "-lboost_system","-lboost_filesystem"]
-          }
-        ]
-      ]
-    },
-    {
-      "target_name": "label_algo_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/label_algo_test.cpp"],
-      "dependencies": [ "mapnik" ]
-    },
-    {
-      "target_name": "map_request_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/map_request_test.cpp"],
-      "dependencies": [ "mapnik" ],
-      "conditions": [
-        ["OS=='win'",
-          {
-            "libraries":[
-              "<(boost_system_lib)",
-              "cairo.lib"
-            ],
-          } ,
-          {
-            "libraries": [ "-lboost_system","-lboost_filesystem"]
-          }
-        ]
-      ]
-    },
-    {
-      "target_name": "params_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/params_test.cpp"],
-      "dependencies": [ "mapnik" ]
-    },
-    {
-      "target_name": "wkb_formats_test",
-      "type": "executable",
-      "product_dir":"test",
-      "sources": [ "../tests/cpp_tests/wkb_formats_test.cpp"],
-      "dependencies": [ "mapnik" ]
     },
     {
       "target_name": "test_rendering",
