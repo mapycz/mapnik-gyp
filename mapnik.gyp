@@ -12,6 +12,7 @@
       "BOOST_REGEX_HAS_ICU",
       "HAVE_JPEG",
       "MAPNIK_USE_PROJ4",
+      "MAPNIK_NO_ATEXIT",
       "HAVE_PNG",
       "HAVE_TIFF",
       "HAVE_WEBP",
@@ -26,7 +27,6 @@
       "../include", # mapnik
       "../deps/", # mapnik/sparsehash
       "../deps/agg/include/", # agg
-      "../deps/clipper/include/", # clipper
       "../", # boost shim
       "<@(includes)/",
       "<@(includes)/gdal",
@@ -35,7 +35,6 @@
       "<@(includes)/libxslt",
       "<@(includes)/cairo"
     ],
-    "boost_version":"1_57",
     "boost_toolset":"vc140",
     "conditions": [
       ["OS=='win'",
@@ -46,7 +45,6 @@
                   "boost_filesystem_lib":"libboost_filesystem-<(boost_toolset)-mt-gd-<(boost_version).lib",
                   "boost_regex_lib":"libboost_regex-<(boost_toolset)-mt-gd-<(boost_version).lib",
                   "boost_system_lib":"libboost_system-<(boost_toolset)-mt-gd-<(boost_version).lib",
-                  "boost_thread_lib":"libboost_thread-<(boost_toolset)-mt-gd-<(boost_version).lib",
                   "boost_program_options_lib":"libboost_program_options-<(boost_toolset)-mt-gd-<(boost_version).lib",
                   "webp_lib":"libwebp_debug_dll.lib",
                   "icuuc_lib":"icuucd.lib",
@@ -57,7 +55,6 @@
                   "boost_filesystem_lib":"libboost_filesystem-<(boost_toolset)-mt-<(boost_version).lib",
                   "boost_regex_lib":"libboost_regex-<(boost_toolset)-mt-<(boost_version).lib",
                   "boost_system_lib":"libboost_system-<(boost_toolset)-mt-<(boost_version).lib",
-                  "boost_thread_lib":"libboost_thread-<(boost_toolset)-mt-<(boost_version).lib",
                   "boost_program_options_lib":"libboost_program_options-<(boost_toolset)-mt-<(boost_version).lib",
                   "webp_lib":"libwebp_dll.lib",
                   "icuuc_lib":"icuuc.lib",
@@ -137,7 +134,6 @@
       "product_dir":"lib",
       "sources": [
         "<!@(find ../deps/agg/src/ -name '*.cpp')",
-        "<!@(find ../deps/clipper/src/ -name '*.cpp')",
         "<!@(find ../src/agg/ -name '*.cpp')",
         "<!@(find ../src/cairo/ -name '*.cpp')",
         "<!@(find ../src/grid/ -name '*.cpp')",
@@ -145,6 +141,7 @@
         "<!@(find ../src/renderer_common/ -name '*.cpp')",
         "<!@(find ../src/svg/ -name '*.cpp')",
         "<!@(find ../src/text/ -name '*.cpp')",
+        "<!@(find ../src/util/ -name '*.cpp')",
         "<!@(find ../src/ -name '*.cpp' -maxdepth 1)"
       ],
       "xcode_settings": {
@@ -186,7 +183,7 @@
               "libxml2_a.lib",
               "libxslt_a.lib",
               "ws2_32.lib",
-              "libjpeg.lib",
+              "jpeg.lib",
               "freetype.lib",
               "zlib.lib",
               "cairo.lib",
@@ -526,7 +523,7 @@
       "target_name": "test",
       "type": "executable",
       "product_dir":"test",
-      "sources": [ 
+      "sources": [
         "<!@(find ../test/unit/ -name '*.cpp')"
       ],
       "include_dirs":[
@@ -538,15 +535,21 @@
           {
             "libraries":[
               "<(boost_filesystem_lib)",
+              "<(boost_regex_lib)",
               "<(boost_system_lib)",
-              "cairo.lib",
-              "libtiff_i.lib",
+              "<(webp_lib)",
               "<(icuuc_lib)",
               "<(icuin_lib)",
+              "libpng16.lib",
               "proj.lib",
+              "libtiff_i.lib",
               "libxml2_a.lib",
-              "<(webp_lib)",
-              "ws2_32.lib"
+              "ws2_32.lib",
+              "jpeg.lib",
+              "freetype.lib",
+              "zlib.lib",
+              "cairo.lib",
+              "harfbuzz.lib"
             ],
           } ,
           {

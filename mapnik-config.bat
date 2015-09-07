@@ -17,7 +17,7 @@ set MAPNIK_LIBS=%MAPNIK_PREFIX%\\lib
 set MAPNIK_INCLUDES=%MAPNIK_PREFIX%\\include
 set MAPNIK_INPUT_PLUGINS_DIRECTORY=%MAPNIK_PREFIX%\\lib\\mapnik\\input
 set MAPNIK_FONTS_DIRECTORY=%MAPNIK_PREFIX%\\lib\\mapnik\\fonts
-set boost_version=1_57
+set boost_version=1_58
 set boost_toolset=vc140
 set boost_compiler=14.0
 
@@ -118,7 +118,7 @@ IF "%1"=="" GOTO Continue
 
     @rem TODO - figure out how to avoid hardcoding these library names
     if /i "%1"=="--dep-libs" (
-      echo libpng16.lib zlib.lib harfbuzz.lib libwebp_dll.lib libjpeg.lib icuuc.lib icuin.lib cairo.lib libboost_system-%boost_toolset%-mt-%boost_version%.lib libxml2_a.lib ws2_32.lib
+      echo libpng16.lib zlib.lib harfbuzz.lib libwebp_dll.lib jpeg.lib icuuc.lib icuin.lib cairo.lib libboost_system-%boost_toolset%-mt-%boost_version%.lib libxml2_a.lib ws2_32.lib
       set hit=%1
     )
 

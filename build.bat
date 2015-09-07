@@ -9,17 +9,28 @@
 ::ddt build\Release
 ::IF ERRORLEVEL NEQ 0 GOTO ERROR
 
-if NOT EXIST gyp (
-    CALL git clone https://chromium.googlesource.com/external/gyp.git gyp
-    IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-)
+if EXIST gyp ECHO gyp already cloned && GOTO GYP_ALREADY_HERE
+
+CALL git clone https://chromium.googlesource.com/external/gyp.git gyp
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+
+::modify gyp to see where it hangs during autmated builds
+CD gyp
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+patch -N -p1 < %PATCHES%/__DELME-GYP-HANG-TEST.diff || %SKIP_FAILED_PATCH%
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+CD ..
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+
+:GYP_ALREADY_HERE
 
 SET PLATFORMX=x64
 IF "%BUILDPLATFORM%"=="Win32" SET PLATFORMX=x86
 :: run find command and bail on error
 :: this ensures we have the unix find command on path
 :: before trying to run gyp
-find ../deps/clipper/src/ -name "*.cpp"
+ECHO testing unix find command
+find ../deps/agg/src/ -name "*.cpp"
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 IF DEFINED PACKAGEDEBUGSYMBOLS (ECHO PACKAGEDEBUGSYMBOLS %PACKAGEDEBUGSYMBOLS%) ELSE (SET PACKAGEDEBUGSYMBOLS=0)
@@ -30,31 +41,36 @@ IF DEFINED PACKAGEDEPS (ECHO PACKAGEDEPS %PACKAGEDEPS%) ELSE (SET PACKAGEDEPS=0)
 SET MAPNIK_SDK=%CD%\mapnik-sdk
 SET DEPSDIR=..\..
 
-CALL gyp\gyp.bat mapnik.gyp --depth=. ^
- -Dincludes=%MAPNIK_SDK%/include ^
- -Dlibs=%MAPNIK_SDK%/lib ^
- -Dconfiguration=%BUILD_TYPE% ^
- -Dplatform=%BUILDPLATFORM% ^
- -f msvs -G msvs_version=2013 ^
- --generator-output=build
+ECHO mapnik SDK directory^: %MAPNIK_SDK%
+ECHO DEPSDIR^: %DEPSDIR%
+
+IF EXIST %MAPNIK_SDK% (ECHO SDK directory found && GOTO MAPNIK_SDK_DIR_CREATED)
+
+ECHO creating mapnik SDK directory
+mkdir %MAPNIK_SDK%
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+mkdir %MAPNIK_SDK%\bin
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+mkdir %MAPNIK_SDK%\include
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+mkdir %MAPNIK_SDK%\share
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+mkdir %MAPNIK_SDK%\lib
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+mkdir %MAPNIK_SDK%\lib\mapnik\input
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+mkdir %MAPNIK_SDK%\lib\mapnik\fonts
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-if NOT EXIST %MAPNIK_SDK% (
-  mkdir %MAPNIK_SDK%
-  mkdir %MAPNIK_SDK%\bin
-  mkdir %MAPNIK_SDK%\include
-  mkdir %MAPNIK_SDK%\share
-  mkdir %MAPNIK_SDK%\lib
-  mkdir %MAPNIK_SDK%\lib\mapnik\input
-  mkdir %MAPNIK_SDK%\lib\mapnik\fonts
-)
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-
+:MAPNIK_SDK_DIR_CREATED
+ECHO label MAPNIK_SDK_DIR_CREATED
 
 :: includes
-SET ICU_VERSION=54
+IF DEFINED ICU_VERSION (FOR /f "delims=." %%G IN ("%ICU_VERSION%") DO SET ICU_VERSION=%%G) ELSE (SET ICU_VERSION=55)
 
-IF %FASTBUILD% EQU 1 GOTO DOFASTBUILD
+IF %FASTBUILD% EQU 1 (ECHO doing a FASTBUILD && GOTO DOFASTBUILD) ELSE (ECHO doing a FULLBUILD)
+
+ECHO copying deps header files...
 
 xcopy /q /d %DEPSDIR%\harfbuzz-build\harfbuzz\hb-version.h %MAPNIK_SDK%\include\harfbuzz\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
@@ -103,11 +119,13 @@ xcopy /q /d %DEPSDIR%\libpng\pnglibconf.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\libpng\pngconf.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-xcopy /q /d %DEPSDIR%\jpeg\jpeglib.h %MAPNIK_SDK%\include\ /Y
+xcopy /q /d %DEPSDIR%\libjpegturbo\jpeglib.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-xcopy /q /d %DEPSDIR%\jpeg\jconfig.h %MAPNIK_SDK%\include\ /Y
+xcopy /q /d %DEPSDIR%\libjpegturbo\jmorecfg.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-xcopy /q /d %DEPSDIR%\jpeg\jmorecfg.h %MAPNIK_SDK%\include\ /Y
+xcopy /q /d %DEPSDIR%\libjpegturbo\build\jconfig.h %MAPNIK_SDK%\include\ /Y
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+xcopy /q /d %DEPSDIR%\libjpegturbo\build\jconfigint.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /i /d /s /q %DEPSDIR%\webp\src\webp %MAPNIK_SDK%\include\webp /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
@@ -143,6 +161,7 @@ xcopy /i /d /s /q %DEPSDIR%\protobuf\src\google %MAPNIK_SDK%\include\google /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 :: libs
+ECHO copying deps lib files...
 xcopy /q /d %DEPSDIR%\harfbuzz-build\harfbuzz.lib %MAPNIK_SDK%\lib\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\freetype\freetype.lib %MAPNIK_SDK%\lib\ /Y
@@ -225,7 +244,9 @@ if "%BOOSTADDRESSMODEL%"=="64" (
   xcopy /q /d %DEPSDIR%\libpng\projects\vstudio\%BUILD_TYPE%\libpng16.dll %MAPNIK_SDK%\lib\ /Y
 )
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-xcopy /q /d %DEPSDIR%\jpeg\libjpeg.lib %MAPNIK_SDK%\lib\ /Y
+xcopy /q /d %DEPSDIR%\libjpegturbo\build\sharedlib\%BUILD_TYPE%\jpeg.lib %MAPNIK_SDK%\lib\ /Y
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+xcopy /q /d %DEPSDIR%\libjpegturbo\build\sharedlib\%BUILD_TYPE%\jpeg62.dll %MAPNIK_SDK%\lib\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\cairo\src\%BUILD_TYPE%\cairo-static.lib %MAPNIK_SDK%\lib\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
@@ -252,12 +273,14 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 
 :: data
+ECHO copying deps additional data files...
 xcopy /i /d /s /q %DEPSDIR%\proj\nad %MAPNIK_SDK%\share\proj /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /i /d /s /q %DEPSDIR%\gdal\data %MAPNIK_SDK%\share\gdal
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 :: bin
+ECHO copying deps bin files...
 IF %TARGET_ARCH% EQU 32 (
   xcopy /q /d %DEPSDIR%\protobuf\vsprojects\%BUILD_TYPE%\protoc.exe %MAPNIK_SDK%\bin\ /Y
 ) ELSE (
@@ -268,6 +291,7 @@ xcopy /q /d mapnik-config.bat %MAPNIK_SDK%\bin /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 :: headers for plugins
+ECHO copying headers for plugins...
 xcopy /q /d %DEPSDIR%\postgresql\src\interfaces\libpq\libpq-fe.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\postgresql\src\include\postgres_ext.h %MAPNIK_SDK%\include\ /Y
@@ -278,6 +302,8 @@ xcopy /q /d %DEPSDIR%\sqlite\sqlite3.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 ::xcopy /q /d %DEPSDIR%\gdal\gcore\*h %MAPNIK_SDK%\include\gdal\ /Y
 ::IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+xcopy /q /d %DEPSDIR%\gdal\ogr\ogr_api.h %MAPNIK_SDK%\include\ /Y
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\gdal\ogr\ogr_feature.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\gdal\ogr\ogr_spatialref.h %MAPNIK_SDK%\include\ /Y
@@ -310,6 +336,8 @@ xcopy /q /d %DEPSDIR%\gdal\port\cpl_conv.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\gdal\port\cpl_vsi.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+xcopy /q /d %DEPSDIR%\gdal\port\cpl_multiproc.h %MAPNIK_SDK%\include\ /Y
+IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\gdal\port\cpl_virtualmem.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d %DEPSDIR%\gdal\port\cpl_error.h %MAPNIK_SDK%\include\ /Y
@@ -322,6 +350,7 @@ xcopy /q /d %DEPSDIR%\gdal\port\cpl_config.h %MAPNIK_SDK%\include\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 :: libs for plugins
+ECHO copying libs for plugins...
 SET LIBPQ_FILE_SUFFIX=
 IF %BUILD_TYPE% EQU Debug (SET LIBPQ_FILE_SUFFIX=d)
 xcopy /q /d %DEPSDIR%\postgresql\src\interfaces\libpq\%BUILD_TYPE%\libpq%LIBPQ_FILE_SUFFIX%.lib %MAPNIK_SDK%\lib\ /Y
@@ -345,8 +374,9 @@ xcopy /q /d %DEPSDIR%\expat\win32\bin\%BUILD_TYPE%\libexpat.dll %MAPNIK_SDK%\lib
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 :: jump to build when not packaging deps
-IF %PACKAGEDEPS% EQU 0 GOTO RUNMAPNIKBUILD
+IF %PACKAGEDEPS% EQU 0 ECHO NOT packaging deps && GOTO RUNMAPNIKBUILD
 
+ECHO packaging deps...
 SET CURRENTBUILDDIR=%CD%
 CD %MAPNIK_SDK%
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
@@ -362,20 +392,36 @@ IF EXIST %ROOTDIR%\bin\%DEP_PKG_FILENAME% DEL /Q %ROOTDIR%\bin\%DEP_PKG_FILENAME
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 COPY %DEP_PKG_FILENAME% %ROOTDIR%\bin\
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-ECHO dependencies pacakge copied to %ROOTDIR%\bin\%DEP_PKG_FILENAME%
+ECHO dependencies package copied to %ROOTDIR%\bin\%DEP_PKG_FILENAME%
 CD %CURRENTBUILDDIR%
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 :RUNMAPNIKBUILD
+ECHO label RUNMAPNIKBUILD
 :: detect trouble with mimatched linking
 ::dumpbin /directives %MAPNIK_SDK%\lib\*lib | grep LIBCMT
 
 ::msbuild /m:2 /t:mapnik /p:BuildInParellel=true .\build\mapnik.sln /p:Configuration=Release
 
 :DOFASTBUILD
+ECHO label DOFASTBUILD
 
 ECHO INCLUDE %INCLUDE%
 
+ECHO generating solution file, calling gyp...
+CALL gyp\gyp.bat mapnik.gyp --depth=. ^
+ --debug=all ^
+ -Dincludes=%MAPNIK_SDK%/include ^
+ -Dlibs=%MAPNIK_SDK%/lib ^
+ -Dconfiguration=%BUILD_TYPE% ^
+ -Dplatform=%BUILDPLATFORM% ^
+ -Dboost_version=1_%BOOST_VERSION% ^
+ -f msvs -G msvs_version=2015 ^
+ --generator-output=build
+IF %ERRORLEVEL% NEQ 0 (ECHO error during solution file generation && GOTO ERROR) ELSE (ECHO solution file generated)
+
+
+ECHO calling msbuild...
 msbuild ^
 .\build\mapnik.sln ^
 /nologo ^
@@ -387,7 +433,8 @@ msbuild ^
 
 :: /t:rebuild
 :: /v:diag > build.log
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
+IF %ERRORLEVEL% NEQ 0 (ECHO error during build && GOTO ERROR) ELSE (ECHO build finished)
+
 
 :: install command line tools
 xcopy /q /d .\build\bin\nik2img.exe %MAPNIK_SDK%\bin /Y
@@ -409,7 +456,7 @@ IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /q /d .\build\bin\shapeindex.exe %MAPNIK_SDK%\bin\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
-xcopy /q /d ..\fonts\dejavu-fonts-ttf-2.34\ttf\*ttf %MAPNIK_SDK%\lib\mapnik\fonts\ /Y
+xcopy /q /d ..\fonts\dejavu-fonts-ttf-2.35\ttf\*ttf %MAPNIK_SDK%\lib\mapnik\fonts\ /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 
 :: plugins
@@ -432,8 +479,6 @@ xcopy /q /d /i /s ..\demo  %MAPNIK_SDK%\demo
 xcopy /i /d /s /q ..\deps\mapnik\sparsehash %MAPNIK_SDK%\include\mapnik\sparsehash /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /i /d /s /q ..\deps\agg\include %MAPNIK_SDK%\include\mapnik\agg /Y
-IF %ERRORLEVEL% NEQ 0 GOTO ERROR
-xcopy /i /d /s /q ..\deps\clipper\include %MAPNIK_SDK%\include\mapnik\agg /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
 xcopy /i /d /s /q ..\include\mapnik %MAPNIK_SDK%\include\mapnik /Y
 IF %ERRORLEVEL% NEQ 0 GOTO ERROR
